@@ -5,25 +5,12 @@
 #if !defined(__SH__)
 #define __SH__
 
-#define READLINE_TASK 194
-#define SHELL_TASK 195
-// shell command tasks
-#if false
-#define CAT_TASK 196
-#define LS_TASK 197
-#define ECHO_TASK 198
-#define FORMAT_TASK 199
-#define APPEND_TASK 200
-#define CP_TASK 201
-#define RM_TASK 202
-#define MV_TASK 203
-#endif
-#define GET_TASK 204
-#define PUT_TASK 205
-#define ED_TASK 206
-#define READINTOPASTEBUFFER_TASK 207
-#define REFLASH_TASK 208
-#define REBOOT_TASK 209
+// shell command tasks are in the range 208-239
+#define READLINE_TASK 239
+#define SHELL_TASK 238
+#define ED_TASK 237
+#define READINTOPASTEBUFFER_TASK 236
+#define REBOOT_TASK 235
 // end of shell command tasks
 
 struct ShParam{

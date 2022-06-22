@@ -86,6 +86,7 @@ static void shellTask() {
   Serial.print("cmd: ");
   TM_CALL_P(2, READLINE_TASK, rp);
   readlineBufTokenize(readlineBuf, Argc, Argv);
+  if(Argc==0) TM_RETURN();	// no line to process
 
   // Search the user commands, and if none found, try the builtins
   // *** USER COMMANDS
@@ -128,13 +129,13 @@ static void shellTask() {
     }
   } else if(Argv[0]=="format") {              // *** FORMAT
     format(SPIFFS,"/");
-  } else if(Argv[0]=="get") {                 // *** GET
+  } else if(Argv[0]=="xget") {                 // *** GET
     if(Argc!=3) { Serial << "Syntax: get remotefn localfn\n"; }
     else {
       String remoteFn;
       remoteFn = (Argv[1][0]=='/' ? "" : "/") + Argv[1];
       Serial.printf("Fetching file [%s]\n", remoteFn.c_str());
-      getFromWeb(SPIFFS, WEBIP, remoteFn/*(*(shParam.Argv))[1]*/, Argv[2]);
+      //getFromWeb(SPIFFS, hwInfo.host, remoteFn/*(*(shParam.Argv))[1]*/, Argv[2]);
     }
   } else if(Argv[0]=="help") {                // *** HELP
     shHelp();
@@ -145,13 +146,13 @@ static void shellTask() {
     }
   } else if(Argv[0]=="ls") {                  // *** LS
     ls(SPIFFS, "/", 0);
-  } else if(Argv[0]=="put") {                 // *** PUT
+  } else if(Argv[0]=="xput") {                 // *** PUT
     if(Argc!=3) { Serial.println("Syntax: put localfn remotefn"); }
     else {
       String remoteFile;
       remoteFile = (Argv[2][0]=='/'?"":"/") + Argv[2];
       Serial.printf("Putting [%s] to  remote file: [%s]\n", Argv[1].c_str(), remoteFile.c_str());
-      putToWeb(SPIFFS, WEBIP, Argv[1], remoteFile);
+      //putToWeb(SPIFFS, hwInfo.host, Argv[1], remoteFile);
     }
   } else if(Argv[0]=="reboot") {              // *** REBOOT
     if(Argc!=1) { Serial.println("Syntax: reboot\n"); }
@@ -159,12 +160,16 @@ static void shellTask() {
       Serial.println("Rebooting...");
       ESP.restart();
     }
-  } else if(Argv[0]=="reflash") {             // *** REFLASH
-    if(Argc!=2) { Serial.println("Syntax: reflash fn"); }
+  } else if(Argv[0]=="xreflash") {             // *** REFLASH
+  	if(Argc==1) {
+		// just reflash, so use appRoot + binFile
+		//if(otaReflash(hwInfo.host, hwInfo.appRoot+hwInfo.binFile)) Serial.println("Image loaded successfully.");
+		//else Serial.println("Image load failed.");
+
+	} else if(Argc!=2) { Serial.println("Syntax: reflash fn"); }
     else {
-      string reflashFile;
-      if(otaReflash(String(WEBIP), Argv[1])) { Serial.println("Image loaded successfully."); }
-      else { Serial.println("Image load failed."); }
+      //if(otaReflash(hwInfo.host, Argv[1])) { Serial.println("Image loaded successfully."); }
+      //else { Serial.println("Image load failed."); }
     }
   } else if(Argv[0]=="rm") {                  // *** RM
     if(Argc<2) { Serial << "Syntax: rm fil fil...\n"; }

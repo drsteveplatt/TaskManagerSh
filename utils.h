@@ -2,14 +2,16 @@
 // declarations for utils
 //
 
-#if !defined(__UTILSDEFINED__) 
+#if !defined(__UTILSDEFINED__)
 #define __UTILSDEFINED__
 
+#if false
 #define NODEID 200
 #define WEBSSID "sculpturama"
 #define PW "$0$0flashy"
 #define WEBIP "192.168.200.2"
 #define WEBPATH "/data"
+#endif
 
 void ls(fs::FS &fs, const char* dirName, int levels);
 void cat(fs::FS &fs, const char* path);
