@@ -2,8 +2,8 @@
 // sh shell processor header
 //
 
-#if !defined(__SH__)
-#define __SH__
+#if !defined(__TASKMANAGERSH__)
+#define __TASKMANAGERSH__
 
 // shell command tasks are in the range 208-239
 #define READLINE_TASK 239

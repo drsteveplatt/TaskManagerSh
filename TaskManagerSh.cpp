@@ -23,7 +23,7 @@
 //
 
 #include  <Streaming.h>
-#include  <TaskManagerESPSub.h>
+#include  <TaskManagerSub.h>
 #include <vector>
 using namespace std;
 
@@ -47,6 +47,14 @@ static void shHelp() {
   int i;
   for(i=0; i<numCommands; i++)
     Serial.printf("  %s\n", theCommands[i].cmd);
+  Serial.printf("  appendTo fn text text text...\n  cat fn\n");
+  Serial.printf("  echoTo fn text text text...\n  cp f f... fdest\n");
+  Serial.printf("  ed [filename]\n  mv fold fnew\n");
+  Serial.printf("  format\n  reboot\n");
+  Serial.printf("  help\n  mv fold fnew\n");
+  Serial.printf("  ls\n  rm fil fil...\n");
+  Serial.printf("  get remotefn localfn\n  put localfn remotefn\n");
+  Serial.printf("  reflash fn\n");
 }
 
 //static bool shellBindShCommand(char* cmdName, int cmdTask) {
@@ -56,8 +64,20 @@ void edTask();
 void readIntoPasteBufferTask(); // from ed
 
 void TaskManagerSh::begin() {
-	TaskMgr.add(SHELL_TASK, shellTask);
-	shellAddSubtasks();
+	// Format SPIFFS file system if needed; open SPIFFS filesystem
+  if(!SPIFFS.begin(false)) {
+    Serial << "Need to format, formatting.\n";
+    SPIFFS.format();
+    if(!SPIFFS.begin(false)) {
+      Serial << "Format failed, exiting.\n";
+      return;
+    }
+    Serial << "...format succeeded.\n";
+  }
+  
+  // add the shell task and all of its callable subtask
+  TaskMgr.add(SHELL_TASK, shellTask);
+  shellAddSubtasks();
 }
 
 bool TaskManagerSh::addCommand(tm_taskId_t cmdTask, const char* cmdName, void (*task)()) {
@@ -129,13 +149,11 @@ static void shellTask() {
     }
   } else if(Argv[0]=="format") {              // *** FORMAT
     format(SPIFFS,"/");
-  } else if(Argv[0]=="xget") {                 // *** GET
-    if(Argc!=3) { Serial << "Syntax: get remotefn localfn\n"; }
+  } else if(Argv[0]=="reboot") {              // *** REBOOT
+    if(Argc!=1) { Serial.println("Syntax: reboot\n"); }
     else {
-      String remoteFn;
-      remoteFn = (Argv[1][0]=='/' ? "" : "/") + Argv[1];
-      Serial.printf("Fetching file [%s]\n", remoteFn.c_str());
-      //getFromWeb(SPIFFS, hwInfo.host, remoteFn/*(*(shParam.Argv))[1]*/, Argv[2]);
+      Serial.println("Rebooting...");
+      ESP.restart();
     }
   } else if(Argv[0]=="help") {                // *** HELP
     shHelp();
@@ -146,6 +164,19 @@ static void shellTask() {
     }
   } else if(Argv[0]=="ls") {                  // *** LS
     ls(SPIFFS, "/", 0);
+  } else if(Argv[0]=="rm") {                  // *** RM
+    if(Argc<2) { Serial << "Syntax: rm fil fil...\n"; }
+    else {
+      for(int i=1; i<Argc; i++) rm(SPIFFS, Argv[i].c_str());
+    }
+  } else if(Argv[0]=="xget") {                 // *** GET
+    if(Argc!=3) { Serial << "Syntax: get remotefn localfn\n"; }
+    else {
+      String remoteFn;
+      remoteFn = (Argv[1][0]=='/' ? "" : "/") + Argv[1];
+      Serial.printf("Fetching file [%s]\n", remoteFn.c_str());
+      //getFromWeb(SPIFFS, hwInfo.host, remoteFn/*(*(shParam.Argv))[1]*/, Argv[2]);
+    }
   } else if(Argv[0]=="xput") {                 // *** PUT
     if(Argc!=3) { Serial.println("Syntax: put localfn remotefn"); }
     else {
@@ -153,12 +184,6 @@ static void shellTask() {
       remoteFile = (Argv[2][0]=='/'?"":"/") + Argv[2];
       Serial.printf("Putting [%s] to  remote file: [%s]\n", Argv[1].c_str(), remoteFile.c_str());
       //putToWeb(SPIFFS, hwInfo.host, Argv[1], remoteFile);
-    }
-  } else if(Argv[0]=="reboot") {              // *** REBOOT
-    if(Argc!=1) { Serial.println("Syntax: reboot\n"); }
-    else {
-      Serial.println("Rebooting...");
-      ESP.restart();
     }
   } else if(Argv[0]=="xreflash") {             // *** REFLASH
   	if(Argc==1) {
@@ -170,11 +195,6 @@ static void shellTask() {
     else {
       //if(otaReflash(hwInfo.host, Argv[1])) { Serial.println("Image loaded successfully."); }
       //else { Serial.println("Image load failed."); }
-    }
-  } else if(Argv[0]=="rm") {                  // *** RM
-    if(Argc<2) { Serial << "Syntax: rm fil fil...\n"; }
-    else {
-      for(int i=1; i<Argc; i++) rm(SPIFFS, Argv[i].c_str());
     }
   } else Serial.println("Invalid command.");
   TM_END();

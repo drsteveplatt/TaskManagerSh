@@ -2,8 +2,8 @@
 // declarations for utils
 //
 
-#if !defined(__UTILSDEFINED__)
-#define __UTILSDEFINED__
+#if !defined(__TASKMANAGER_UTILSDEFINED__)
+#define __TASKMANAGER_UTILSDEFINED__
 
 #if false
 #define NODEID 200
