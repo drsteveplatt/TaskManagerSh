@@ -251,11 +251,11 @@ void edTask() {
     static int insertPoint;
 
     // If we were passed a file, read it in
-    if(*(shParam.Argc) == 2) {
+    if(shParam.Argc == 2) {
       // have a file, read it in
-      if( (*(shParam.Argv))[1].length()==0) { printf("Syntax: ed fn\n"); }
-      else if(!readTheFile((*(shParam.Argv))[1].c_str())) { printf("Can't read file [%s]\n", (*(shParam.Argv))[1].c_str()); }
-      else { currentFilename = (*(shParam.Argv))[1]; fileModified = true; currentLine = 1; }
+      if( (shParam.Argv)[1].length()==0) { printf("Syntax: ed fn\n"); }
+      else if(!readTheFile(shParam.Argv[1].c_str())) { printf("Can't read file [%s]\n", shParam.Argv[1].c_str()); }
+      else { currentFilename = shParam.Argv[1]; fileModified = true; currentLine = 1; }
     }
 
     done = false;

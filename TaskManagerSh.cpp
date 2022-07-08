@@ -99,7 +99,7 @@ static void shellTask() {
   static String readlineBuf;
   static int Argc;
   static vector<String> Argv;
-  static ShParam shParam(&Argc, &Argv);
+  static ShParam shParam;
   //static ReadlineParam rp(readlineBuf);
   static ReadlineParam rp(&readlineBuf);
   TM_BEGIN();
@@ -112,6 +112,8 @@ static void shellTask() {
   // *** USER COMMANDS
   for(i=0; i<numCommands; i++) if(strcmp(theCommands[i].cmd, Argv[0].c_str())==0) break;
   if(i<numCommands) {
+	//static ShParam shParam(Argc, Argv);
+	shParam.Argc = Argc; shParam.Argv = Argv;
     TM_CALL_P(1, theCommands[i].taskId, shParam);
   } else if(Argv[0]=="appendTo") {            // *** APPENDTO
     int i;
@@ -145,6 +147,8 @@ static void shellTask() {
   } else if(Argv[0]=="ed") {                  // *** ED
     if(Argc>2) Serial.println("Syntax: ed [filename]");
     else {
+	  //static ShParam shParam(Argc, Argv);
+	  shParam.Argc = Argc;  shParam.Argv = Argv;
       TM_CALL_P(3, ED_TASK, shParam);
     }
   } else if(Argv[0]=="format") {              // *** FORMAT

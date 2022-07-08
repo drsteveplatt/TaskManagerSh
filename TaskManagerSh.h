@@ -13,11 +13,11 @@
 #define REBOOT_TASK 235
 // end of shell command tasks
 
-struct ShParam{
-  int* Argc;
-  vector<String>* Argv;
-  ShParam(): Argc(NULL), Argv(NULL) {}
-  ShParam(int* argc, vector<String>* argv): Argc(argc), Argv(argv) {};
+struct ShParam {
+  int Argc;
+  vector<String> Argv;
+  ShParam(): Argc(0) {}
+  ShParam(int argc, vector<String> argv): Argc(argc), Argv(argv) {};
 };
 
 //void shellTask();
