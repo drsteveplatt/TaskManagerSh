@@ -33,35 +33,34 @@ commands supported
     + n -- move down n lines
     - n -- move up n lines
 
-
-
 *******************************************************************************/
-
 #include <arduino.h>
-#include <FS.h>
-#include <SPIFFS.h>
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+
 #include <TaskManagerSub.h>
-
-#include <vector>
-using namespace std;
-
 #include <TaskManagerSh.h>
-
-#include <Streaming.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <vector>
-using namespace std;
-
 // State of the editing buffer
+#if USING_ARDUINOSSH
 static vector<String> theData;
+#else
+// For some reason, the compiler doesn't like TMSH_ED_MAX_LINES
+#define TMSH_ED_MAX_LINES 100
+static Array<String, TMSH_ED_MAX_LINES> theData;
+#endif
 static int currentLine;     // note: this is the PHYSICAL line (0..n-1), not the LOGICAL line (1..n).
                             // note also:  -1 means "past the last line", for empty files or
                             //  when you delete the last group of lines.
+#if USING_ARDUINOSSH
 static vector<String> pasteBuffer;
+#else
+static Array<String, TMSH_ED_MAX_LINES> pasteBuffer;
+#endif
 static int deleteSource;   // start line of wherever the paste buffer was grabbed from.
 
 static String cmdLine;
@@ -73,10 +72,15 @@ static bool fileModified;
 // WORLD'S WORST UNDO MECHANISM
 class UndoBuffer {
     public:
-        vector<String> undoTheData;
         int undoCurrentLine;
-        vector<String> undoPasteBuffer;
         int undoDeleteSource;
+#if USING_ARDUINOSSH
+        vector<String> undoTheData;
+        vector<String> undoPasteBuffer;
+#else
+		Array<String, TMSH_ED_MAX_LINES> undoTheData;
+		Array<String, TMSH_ED_MAX_LINES> undoPasteBuffer;
+#endif
     private:
         bool undoBufferEmpty;
     public:
@@ -163,7 +167,7 @@ static void lineNumFix(int res, int& l1, int& l2, bool currentLineDefault=false)
     }
 }
 
-inline bool lineNumsGood(int line1, int line2) {
+inline static bool lineNumsGood(int line1, int line2) {
   // makes sure the two values are in the range [1 theData.size()]
   return line1>=1 && line2>=1 && line1<=theData.size() && line2<=theData.size();
 }
@@ -196,13 +200,13 @@ static int peelTwoNumbers(String word1, String word2, int& n1, int& n2) {
     return n==-1 ? -1 : n+1;    // account for first number to return 1 or 2
 }
 
-void readIntoPasteBufferTask() {
+void Tmsh_readIntoPasteBufferTask() {
     TM_BEGINSUB();
     // read lines into the paste buffer until a line with "." is entered.
     // Enter .. for ., ... for .., etc.
     // Any time you need "." to start, add another "."
     static String tmpLine;
-    static ReadlineParam rp(&tmpLine);
+    static Tmsh_readlineParam rp(&tmpLine);
     static bool done;
     done = false;
     // clear the pastebuffer
@@ -211,6 +215,7 @@ void readIntoPasteBufferTask() {
     // read lines and append until "." is hit
     while(!done) {
         TM_CALL_P(1, READLINE_TASK, rp);
+		Serial.println(tmpLine);
         if(tmpLine==".") done = true; // single dot line is ignored
         else {
           if(tmpLine[0]=='.' && tmpLine[1]=='.') tmpLine = tmpLine.substring(1);
@@ -224,23 +229,45 @@ static void insertPasteBufferBefore(int insertPoint) {
     // insert the paste buffer before the given line.
     // insertPoint==0 then insert at the end (append)
     // insertPoint>=theData.size() or insertPoint==-1 then just insert at the end
+#if USING_ARDUINOSSH
     vector<String>::iterator ipIt;
+#else
+	//ArrayIterator<String> ipIt(theData);
+#endif
     if(insertPoint>=theData.size() || insertPoint==-1) {
         for(int i=0; i<pasteBuffer.size(); i++) theData.push_back(pasteBuffer[i]);
     } else {
         // insert before insertPoint
         for(int i=0; i<pasteBuffer.size(); i++) {
+#if USING_ARDUINOSSH
             ipIt = theData.begin()+insertPoint+i;
             theData.insert(ipIt, pasteBuffer[i]);
+#else
+			// ugh, need to manually insert.
+			// insert only if it fits
+			// Reminder -- this is a loop of one-line inserts
+			// Pretty inefficient.
+			if(!theData.full()) {
+				// move the rest down
+				theData.push_back("");
+				for(int j=theData.size()-1; j>insertPoint+i; j--) {
+					theData[j] = theData[j-1];
+				}
+				theData[insertPoint+i] = pasteBuffer[i];
+			}
+#endif
         }
     }
 }
 // *** END of fine-tuning for ESP
 
-void edTask() {
-    TM_BEGINSUB_P(ShParam, shParam);
-    static ReadlineParam rp(&cmdLine);
+void Tmsh_edTask() {
+    static Tmsh_readlineParam rp(&cmdLine);
+#if USING_ARDUINOSSH
     static vector<String> Argv;
+#else
+	static Array<String, TMSH_MAX_PARAMS> Argv;
+#endif
     static int Argc;
     static String fn;
     static bool ret;
@@ -249,20 +276,22 @@ void edTask() {
     // things used while parsing lines
     static int line1, line2, res;
     static int insertPoint;
+    TM_BEGINSUB_P(Tmsh_paramP, shParamP);
 
     // If we were passed a file, read it in
-    if(shParam.Argc == 2) {
+    if(shParamP->Argc == 2) {
       // have a file, read it in
-      if( (shParam.Argv)[1].length()==0) { printf("Syntax: ed fn\n"); }
-      else if(!readTheFile(shParam.Argv[1].c_str())) { printf("Can't read file [%s]\n", shParam.Argv[1].c_str()); }
-      else { currentFilename = shParam.Argv[1]; fileModified = true; currentLine = 1; }
+      if( (shParamP->Argv)[1].length()==0) { printf("Syntax: ed fn\n"); }
+      else if(!readTheFile(shParamP->Argv[1].c_str())) { printf("Can't read file [%s]\n", shParamP->Argv[1].c_str()); }
+      else { currentFilename = shParamP->Argv[1]; fileModified = true; currentLine = 1; }
     }
 
     done = false;
     while(!done) {
         Serial.print("ed: ");
         TM_CALL_P(1, READLINE_TASK, rp);
-        readlineBufTokenize(cmdLine, Argc, Argv);
+		Serial.println(cmdLine);
+        Tmsh_readlineBufTokenize(cmdLine, Argc, Argv);
         if(Argc==0) { continue; } // empty line
         else if(Argv[0]=="?") {
             if(Argc>1) { printf("Syntax: ?\n"); continue; }
@@ -310,8 +339,13 @@ void edTask() {
             pasteBuffer.clear();
             for(n=line1; n<=line2; n++) {
                 pasteBuffer.push_back(theData[line1-1]);
+#if USING_ARDUINOSSH
                 theData.erase(theData.begin()+line1-1);   // some day, (line1, line2+1)
-            }
+#else
+				// fudged up "erase"
+				theData.remove(line1-1);
+#endif
+			}
             currentLine = line1;
             if(currentLine>theData.size()) currentLine=-1;
         } else if(Argv[0]=="f") {
@@ -384,7 +418,7 @@ void edTask() {
         } else if(Argv[0]=="ib") {
             // ib [line] -- insert before
             int n;
-            if(Argc>2) { printf("Syntax: ia [line]\n"); continue; }
+            if(Argc>2) { printf("Syntax: ib [line]\n"); continue; }
             if(Argc==1) { res = 1; line1 = currentLine; }
             else {
               res = peelNumber(Argv[1],line1);
@@ -548,7 +582,6 @@ void edTask() {
         } else {
             printf("unknown command.\n");
         }
-
     }
     // clean up
     theData.clear();
@@ -556,3 +589,6 @@ void edTask() {
     currentFilename = "";
     TM_ENDSUB();
 }
+
+#endif // ESP architecture
+

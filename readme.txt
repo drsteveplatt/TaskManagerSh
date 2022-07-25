@@ -3,6 +3,9 @@ A brief description of TaskManagerSh
 TaskManagerSh is a command-line shell for TaskManager.  It runs on ESP units only.
 It also uses SPIFFS for data/file storage.
 
+Update:  There is an AVR version.  It only has the 'reboot' command, but can be used 
+as the core for an interactive system.
+
 It provides a command shell for an ESP TaskManager-based application.
 
 In the future, there may be a SPIFFS-free version that will also run on AVR systems.

@@ -1,17 +1,14 @@
 //
 // Various filesystem routines
 //
-
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 #include <arduino.h>
 
-#include <FS.h>
-#include <SPIFFS.h>
 #include <TaskManagerSub.h>
+#include <TaskManagerSh.h.>
+//#include <Update.h>
+//#include <HTTPClient.h>
 
-#include <Update.h>
-#include <HTTPClient.h>
-
-#include <Streaming.h>
 #include "utils.h"
 
 static char space32[] = "                                ";
@@ -47,7 +44,7 @@ void ls(fs::FS &fs, const char* dirName, int levels) {
 void cat(fs::FS &fs, const char* path) {
   File file = fs.open(addSlash(path).c_str(), FILE_READ);
   if(!file || file.isDirectory()) return;
-  while(file.available()) Serial.write(file.read());
+  while(file.available()) { Serial.write(file.read()); }
   file.close();
 }
 void echoTo(fs::FS &fs, const char* path, const char* content) {
@@ -105,4 +102,4 @@ void format(fs::FS &fs, const char* dirName) {
   }
   root.close();
 }
-
+#endif // ESP architecture
